@@ -2,7 +2,8 @@ import tf_utils
 import tensorflow as tf
 
 def placeholder(P, Q, N):
-    X = tf.compat.v1.placeholder(shape = (None, P, N), dtype = tf.float32)
+    W = 7 ## new: number of weather features
+    X = tf.compat.v1.placeholder(shape = (None, P, N, 1 + W), dtype = tf.float32) ## new
     TE = tf.compat.v1.placeholder(shape = (None, P + Q, 2), dtype = tf.int32)  # Time Embedding info (day-of-week & time-of-day)
     label = tf.compat.v1.placeholder(shape = (None, Q, N), dtype = tf.float32)  # future traffic
     is_training = tf.compat.v1.placeholder(shape = (), dtype = tf.bool)
@@ -234,7 +235,7 @@ def GMAN(X, TE, SE, P, Q, T, L, K, d, bn, bn_decay, is_training):
     """
     D = K * d
     # input
-    X = tf.expand_dims(X, axis = -1)
+    ###X = tf.expand_dims(X, axis = -1)  ## new: remove because we already expanded up
     X = FC(
         X, units = [D, D], activations = [tf.nn.relu, None],
         bn = bn, bn_decay = bn_decay, is_training = is_training)

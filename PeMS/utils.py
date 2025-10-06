@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import h5py
 
 
 # This file handles everything before the model:
@@ -50,22 +51,32 @@ def seq2instance(data, P, Q):
     return x, y
 
 def loadData(args):
-    # Traffic
-    df = pd.read_hdf(args.traffic_file)
-    Traffic = df.values
-    # train/val/test 
-    num_step = df.shape[0]
+    # =========================
+    # Load fused traffic+weather data (HDF5)
+    # =========================
+    with h5py.File(args.traffic_file, 'r') as f:
+        data = f['data'][:]  # shape: (T, N, C)
+    num_step, num_nodes, num_features = data.shape
+
+    Traffic = data.reshape(num_step, -1)  # (T, N*C)
+
+    # train/val/test
+    num_step = data.shape[0]
     train_steps = round(args.train_ratio * num_step)
     test_steps = round(args.test_ratio * num_step)
     val_steps = num_step - train_steps - test_steps
+
     train = Traffic[: train_steps]
     val = Traffic[train_steps : train_steps + val_steps]
     test = Traffic[-test_steps :]
-    # X, Y
-    # reshapes (time, N) into (num_samples, P, N, 1) for X and (num_samples, Q, N, 1) for Y.
+
+
+    # reshapes (time, N) into (num_samples, P, N, W+1) for X and (num_samples, Q, N, W+1) for Y.
     trainX, trainY = seq2instance(train, args.P, args.Q)
     valX, valY = seq2instance(val, args.P, args.Q)
     testX, testY = seq2instance(test, args.P, args.Q)
+
+
     # normalization
     mean, std = np.mean(trainX), np.std(trainX)
     trainX = (trainX - mean) / std
@@ -84,15 +95,16 @@ def loadData(args):
         index = int(temp[0])
         SE[index] = temp[1 :]
 
-    #### make sure the index is datetime
-    if not isinstance(df.index, pd.DatetimeIndex):
-        df.index = pd.to_datetime(df.index)
-    # temporal embedding 
-    Time = df.index
-    dayofweek =  np.reshape(Time.weekday, newshape = (-1, 1))
-    timeofday = (Time.hour * 3600 + Time.minute * 60 + Time.second) // 300  ### 300s = 5min interval
-    timeofday = np.reshape(timeofday, newshape = (-1, 1))    
-    Time = np.concatenate((dayofweek, timeofday), axis = -1)
+    # Reconstruct time index
+    start_time = pd.Timestamp('2017-01-01 00:00:00')  # adjust if your dataset is different
+    time_index = pd.date_range(start=start_time, periods=num_step, freq='5min')
+
+    # Temporal embedding
+    dayofweek = np.reshape(time_index.weekday, newshape=(-1, 1))
+    timeofday = (time_index.hour * 3600 + time_index.minute * 60 + time_index.second) // 300  # 300s = 5min
+    timeofday = np.reshape(timeofday, newshape=(-1, 1))
+    Time = np.concatenate((dayofweek, timeofday), axis=-1)
+
     # train/val/test
     train = Time[: train_steps]
     val = Time[train_steps : train_steps + val_steps]
