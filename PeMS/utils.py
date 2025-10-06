@@ -41,27 +41,52 @@ def metric(pred, label):
     return mae, rmse, mape
 
 def seq2instance(data, P, Q):
-    num_step, dims = data.shape
+    """
+    Convert time series into sequences for GMAN.
+    data: (num_step, num_nodes, num_features)
+    Returns:
+        X: (num_samples, P, num_nodes, num_features)
+        Y: (num_samples, Q, num_nodes, num_features)
+    """
+    num_step, num_nodes, num_features = data.shape
     num_sample = num_step - P - Q + 1
-    x = np.zeros(shape = (num_sample, P, dims))
-    y = np.zeros(shape = (num_sample, Q, dims))
+    X = np.zeros(shape=(num_sample, P, num_nodes, num_features))
+    Y = np.zeros(shape=(num_sample, Q, num_nodes, num_features))
     for i in range(num_sample):
-        x[i] = data[i : i + P]
-        y[i] = data[i + P : i + P + Q]
-    return x, y
+        X[i] = data[i:i+P]
+        Y[i] = data[i+P:i+P+Q]
+    return X, Y
+
+
+###new : to fit the shape
+def seq2instance_TE(data, P, Q):
+    """
+    Temporal embeddings sequence conversion.
+    data: (num_step, num_features)  # 2 features: dayofweek, timeofday
+    Returns:
+        X: (num_samples, P, num_features)
+        Y: (num_samples, Q, num_features)
+    """
+    num_step, num_features = data.shape
+    X, Y = [], []
+    for i in range(num_step - P - Q + 1):
+        X.append(data[i:i+P])
+        Y.append(data[i+P:i+P+Q])
+    return np.array(X), np.array(Y)
+
 
 def loadData(args):
     # =========================
     # Load fused traffic+weather data (HDF5)
     # =========================
     with h5py.File(args.traffic_file, 'r') as f:
-        data = f['data'][:]  # shape: (T, N, C)
+        num_samples = 5000
+        data = f['data'][:num_samples]  # shape: (T, N, C)
     num_step, num_nodes, num_features = data.shape
 
-    Traffic = data.reshape(num_step, -1)  # (T, N*C)
+    Traffic = data  # shape: (T, N, F)
 
     # train/val/test
-    num_step = data.shape[0]
     train_steps = round(args.train_ratio * num_step)
     test_steps = round(args.test_ratio * num_step)
     val_steps = num_step - train_steps - test_steps
@@ -109,13 +134,14 @@ def loadData(args):
     train = Time[: train_steps]
     val = Time[train_steps : train_steps + val_steps]
     test = Time[-test_steps :]
-    # shape = (num_sample, P + Q, 2)
-    trainTE = seq2instance(train, args.P, args.Q)
-    trainTE = np.concatenate(trainTE, axis = 1).astype(np.int32)
-    valTE = seq2instance(val, args.P, args.Q)
-    valTE = np.concatenate(valTE, axis = 1).astype(np.int32)
-    testTE = seq2instance(test, args.P, args.Q)
-    testTE = np.concatenate(testTE, axis = 1).astype(np.int32)
+
+    ####new: shape = (num_sample, P + Q, 2)
+    trainTE_X, trainTE_Y = seq2instance_TE(train, args.P, args.Q)
+    trainTE = np.concatenate([trainTE_X, trainTE_Y], axis = 1).astype(np.int32)
+    valTE_X, valTE_Y = seq2instance_TE(val, args.P, args.Q)
+    valTE = np.concatenate([valTE_X, valTE_Y], axis = 1).astype(np.int32)
+    testTE_X, testTE_Y = seq2instance_TE(test, args.P, args.Q)
+    testTE = np.concatenate([testTE_X, testTE_Y], axis = 1).astype(np.int32)
 
     ####
     trainX = trainX[:5000]

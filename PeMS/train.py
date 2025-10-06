@@ -58,6 +58,10 @@ utils.log_string(log, str(args)[10 : -1])
 utils.log_string(log, 'loading data...')
 (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE, testY, SE,
  mean, std) = utils.loadData(args)
+###
+trainY = trainY[..., 0]
+valY = valY[..., 0]
+testY = testY[..., 0]
 utils.log_string(log, 'trainX: %s\ttrainY: %s' % (trainX.shape, trainY.shape))
 utils.log_string(log, 'valX:   %s\t\tvalY:   %s' % (valX.shape, valY.shape))
 utils.log_string(log, 'testX:  %s\t\ttestY:  %s' % (testX.shape, testY.shape))
@@ -66,8 +70,8 @@ utils.log_string(log, 'data loaded!')
 # train model
 utils.log_string(log, 'compiling model...')
 T = 24 * 60 // args.time_slot
-num_train, _, N = trainX.shape
-X, TE, label, is_training = model.placeholder(args.P, args.Q, N)
+num_train, P, N, F = trainX.shape
+X, TE, label, is_training = model.placeholder(args.P, args.Q, N, F)
 global_step = tf.Variable(0, trainable = False)
 bn_momentum = tf.compat.v1.train.exponential_decay(
     0.5, global_step,

@@ -1,12 +1,16 @@
 import tf_utils
 import tensorflow as tf
 
-def placeholder(P, Q, N):
-    W = 7 ## new: number of weather features
-    X = tf.compat.v1.placeholder(shape = (None, P, N, 1 + W), dtype = tf.float32) ## new
-    TE = tf.compat.v1.placeholder(shape = (None, P + Q, 2), dtype = tf.int32)  # Time Embedding info (day-of-week & time-of-day)
-    label = tf.compat.v1.placeholder(shape = (None, Q, N), dtype = tf.float32)  # future traffic
-    is_training = tf.compat.v1.placeholder(shape = (), dtype = tf.bool)
+def placeholder(P, Q, N, F):
+    """
+    X: (batch, P, N, F)
+    TE: (batch, P+Q, 2)
+    label: (batch, Q, N)
+    """
+    X = tf.compat.v1.placeholder(shape=(None, P, N, F), dtype=tf.float32)
+    TE = tf.compat.v1.placeholder(shape=(None, P+Q, 2), dtype=tf.int32)
+    label = tf.compat.v1.placeholder(shape=(None, Q, N), dtype=tf.float32)
+    is_training = tf.compat.v1.placeholder(shape=(), dtype=tf.bool)
     return X, TE, label, is_training
 
 def FC(x, units, activations, bn, bn_decay, is_training, use_bias = True):
