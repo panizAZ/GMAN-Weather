@@ -37,14 +37,13 @@ class Args:
     val_ratio = 0.1
     test_ratio = 0.2
     batch_size = 32
-    traffic_file = "data/pems-bay.h5"
+    traffic_file = "data/pems-bay-with-weather.h5"
     SE_file = "data/SE(PeMS).txt"
-    model_file = "/content/drive/MyDrive/gman_checkpoints/default/GMAN(PeMS)"
+    model_file = "/content/drive/MyDrive/gman_checkpoints/weather-added/GMAN(PeMS)"
     log_file = "data/test_log.txt"
 
 args = Args()
 
-start = time.time()
 
 log = open(args.log_file, 'w')
 utils.log_string(log, str(args)[10 : -1])
@@ -53,6 +52,9 @@ utils.log_string(log, str(args)[10 : -1])
 utils.log_string(log, 'loading data...')
 (trainX, trainTE, trainY, valX, valTE, valY, testX, testTE, testY,
  SE, mean, std) = utils.loadData(args)
+trainY = trainY[..., 0]   # shape: (num_samples, Q, N)
+valY   = valY[..., 0]  ##
+testY  = testY[..., 0]  ##
 num_train, num_val, num_test = trainX.shape[0], valX.shape[0], testX.shape[0]
 utils.log_string(log, 'trainX: %s\ttrainY: %s' % (trainX.shape, trainY.shape))
 utils.log_string(log, 'valX:   %s\t\tvalY:   %s' % (valX.shape, valY.shape))
